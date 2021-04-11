@@ -2,8 +2,8 @@ import asyncio
 import datetime
 from typing import Optional, List
 from enum import Enum
-from fastapi import FastAPI, Query, Path, Body
-from pydantic import BaseModel, Field
+from fastapi import FastAPI, Query, Path, Body, Cookie, Form, Depends
+from pydantic import BaseModel, Field, EmailStr
 
 # initial app (run command: unicorn <name_file>:<name_instance_fast_api> --reload (only develop mode))
 
@@ -206,3 +206,51 @@ class Item2(BaseModel):
 async def update_item_second(item_id: int, item: Item2 = Body(..., embed=True)):
     results = {"item_id": item_id, "item": item}
     return results
+
+
+@app.get("/items_cookie/")
+async def read_items_cookie(csrftoken: Optional[str] = Cookie(...)):
+    print(csrftoken)
+    return {"csrftoken": csrftoken}
+
+
+class UserIn(BaseModel):
+    username: str
+    password: str
+    email: EmailStr
+    full_name: Optional[str] = None
+
+
+# Don't do this in production!
+@app.post("/user/", response_model=UserIn)
+async def create_user(user: UserIn):
+    return user
+
+
+@app.post("/login/")
+async def login(username: str = Form(...), password: str = Form(...)):
+    print(username, password)
+    return {"username": username}
+
+
+async def common_parameters(q: str = None, skip: int = 0, limit: int = 100):
+    return {"q": q, "skip": skip, "limit": limit}
+
+
+@app.get("/items_dep/")
+async def read_items_dep(commons: dict = Depends(common_parameters)):
+    return commons
+
+
+@app.get("/users_dep/")
+async def read_users_dep(commons: dict = Depends(common_parameters)):
+    return commons
+
+
+def get_c() -> dict:
+    return {"sasasa": 121}
+
+
+@app.get("/users_dep1/")
+async def read_users_dep1(commons: dict = Depends(get_c)):
+    return commons
